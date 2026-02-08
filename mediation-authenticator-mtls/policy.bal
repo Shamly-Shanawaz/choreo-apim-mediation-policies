@@ -22,7 +22,7 @@ import ballerina/log;
 import choreo/mediation.authenticator_mtls.'com.wso2.choreo.am.mediation.certificates as certificates;
 
 const CERTIFICATE_HEADER = "x-client-cert-x509";
-json AUTHENTICATION_FALIURE_MESSAGE = {
+json AUTHENTICATION_FAILURE_MESSAGE = {
     "error_message": "Invalid Credentials",
     "code": "900901",
     "error_description": "Make sure you have provided the correct security credentials."
@@ -31,6 +31,7 @@ json AUTHENTICATION_FALIURE_MESSAGE = {
 @mediation:RequestFlow
 public function addHeader_In(mediation:Context ctx, http:Request req, string Certificate\ Content, boolean Optional = false)
                                                                 returns http:Response|false|error|() {
+    log:printInfo("Starting mTLS authentication validation");
 
     string savedCertString = check url:decode(Certificate\ Content, "UTF-8");
     string|http:HeaderNotFoundError incomingCertString = req.getHeader(CERTIFICATE_HEADER);
@@ -41,15 +42,20 @@ public function addHeader_In(mediation:Context ctx, http:Request req, string Cer
             log:printDebug("MTLS Header is optional, returning without error.");
             return ();
         }
-        return generateResponse(AUTHENTICATION_FALIURE_MESSAGE, http:STATUS_UNAUTHORIZED);
-    } else {        
-        string clientCertString = check url:decode(incomingCertString, "UTF-8");
+        return generateResponse(AUTHENTICATION_FAILURE_MESSAGE, http:STATUS_UNAUTHORIZED);
+    } else {
+        string|error clientCertString = url:decode(incomingCertString, "UTF-8");
+        if (clientCertString is error) {
+            log:printDebug("Invalid URL-encoded certificate in x-client-cert-x509 header");
+            return generateResponse(AUTHENTICATION_FAILURE_MESSAGE, http:STATUS_UNAUTHORIZED);
+        }
         certificates:ValidationResponse resp = certificates:CertificateValidator_verifyCertificates(savedCertString, clientCertString);
         if (resp.isVerify()) {
-            return ();           
+            log:printInfo("mTLS authentication successful – client certificate validated");
+            return ();
         } else {
             log:printDebug("Client certificate does not match the saved certificate. " + resp.getMessage());
-            return generateResponse(AUTHENTICATION_FALIURE_MESSAGE, http:STATUS_UNAUTHORIZED);
+            return generateResponse(AUTHENTICATION_FAILURE_MESSAGE, http:STATUS_UNAUTHORIZED);
         }
     }
 }

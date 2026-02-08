@@ -1,4 +1,5 @@
 import ballerina/jballerina.java;
+import ballerina/log;
 import choreo/mediation.authenticator_mtls.'java.lang as javalang;
 import choreo/mediation.authenticator_mtls.'java.security.cert as javasecuritycert;
 
@@ -127,8 +128,10 @@ public function CertificateValidator_getCertificate(string arg0) returns javasec
 # + arg1 - The `string` value required to map with the Java method parameter.
 # + return - The `ValidationResponse` value returning from the Java mapping.
 public function CertificateValidator_verifyCertificates(string arg0, string arg1) returns ValidationResponse {
+    log:printInfo("Verifying certificates");
     handle externalObj = com_wso2_choreo_am_mediation_certificates_CertificateValidator_verifyCertificates(java:fromString(arg0), java:fromString(arg1));
     ValidationResponse newObj = new (externalObj);
+    log:printDebug("Certificate verification completed");
     return newObj;
 }
 
